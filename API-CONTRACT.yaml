@@ -1,0 +1,607 @@
+openapi: 3.1.0
+info:
+  title: Verdict API
+  version: "1.0.0"
+  description: >
+    Canonical API contract for the Verdict hackathon judging platform.
+    Every endpoint here must be implemented exactly as named — no additional
+    endpoints invented by either the frontend or backend build without updating
+    this file first. Enum values are defined once in ENUMS.md and referenced
+    here by name. All list responses are wrapped in {"data": [...], "meta": {...}};
+    all single-resource responses are wrapped in {"data": {...}}; all errors are
+    {"error": {"code": "...", "message": "...", "details": {...}?}}.
+servers:
+  - url: /api/v1
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: verdict_session
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, enum: [unauthenticated, forbidden, not_found, validation_error, deadline_passed, event_not_open, conflict, rate_limited, internal_error] }
+            message: { type: string }
+            details: { type: object }
+          required: [code, message]
+      required: [error]
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        display_name: { type: string }
+        is_platform_admin: { type: boolean }
+
+    Event:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        tagline: { type: string, nullable: true }
+        description_md: { type: string, nullable: true }
+        status: { type: string, enum: [draft, upcoming, submissions_open, submissions_closed, judging_open, judging_closed, results_published, archived] }
+        submissions_open_at: { type: string, format: date-time, nullable: true }
+        submissions_close_at: { type: string, format: date-time, nullable: true }
+        judging_opens_at: { type: string, format: date-time, nullable: true }
+        judging_closes_at: { type: string, format: date-time, nullable: true }
+        voting_open_at: { type: string, format: date-time, nullable: true }
+        voting_close_at: { type: string, format: date-time, nullable: true }
+        min_reviews_per_project: { type: integer }
+        min_publish_coverage_pct: { type: number }
+
+    Track:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        sort_order: { type: integer }
+
+    Prize:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        track_id: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        description: { type: string, nullable: true }
+
+    Team:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        name: { type: string }
+        members: { type: array, items: { $ref: '#/components/schemas/User' } }
+
+    Project:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        team_id: { type: string, format: uuid }
+        track_id: { type: string, format: uuid, nullable: true }
+        title: { type: string }
+        summary: { type: string }
+        description_md: { type: string, nullable: true }
+        repo_url: { type: string, nullable: true }
+        demo_url: { type: string, nullable: true }
+        video_url: { type: string, nullable: true }
+        cover_image_url: { type: string, nullable: true }
+        status: { type: string, enum: [draft, submitted, disqualified] }
+        submitted_at: { type: string, format: date-time, nullable: true }
+        is_duplicate_of: { type: string, format: uuid, nullable: true }
+
+    RubricCriterion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        key: { type: string }
+        label: { type: string }
+        description: { type: string, nullable: true }
+        weight: { type: number }
+        scale_min: { type: integer }
+        scale_max: { type: integer }
+        option_labels: { type: object, additionalProperties: { type: string } }
+        sort_order: { type: integer }
+
+    Rubric:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        name: { type: string }
+        criteria: { type: array, items: { $ref: '#/components/schemas/RubricCriterion' } }
+
+    Assignment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        judge_user_id: { type: string, format: uuid }
+        status: { type: string, enum: [pending, in_progress, completed] }
+
+    EvaluationScoreInput:
+      type: object
+      properties:
+        criterion_id: { type: string, format: uuid }
+        value: { type: integer }
+      required: [criterion_id, value]
+
+    Evaluation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        assignment_id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        judge_user_id: { type: string, format: uuid }
+        reaction: { type: string, enum: [not_convinced, interesting, stands_out], nullable: true }
+        final_preference: { type: string, enum: [no, maybe, yes], nullable: true }
+        tags:
+          type: array
+          items: { type: string, enum: [great_execution, clever_idea, strong_impact, beautiful_ux, technically_impressive, very_original, needs_more_polish] }
+        comment: { type: string, nullable: true }
+        scores: { type: array, items: { $ref: '#/components/schemas/EvaluationScoreInput' } }
+        status: { type: string, enum: [in_progress, submitted] }
+        submitted_at: { type: string, format: date-time, nullable: true }
+
+    ProjectRanking:
+      type: object
+      properties:
+        project_id: { type: string, format: uuid }
+        reviews_count: { type: integer }
+        is_rankable: { type: boolean }
+        official_score: { type: number, nullable: true }
+        display_score: { type: number, nullable: true }
+        rank: { type: integer, nullable: true }
+        tie_break_reason: { type: string, nullable: true }
+        flags: { type: array, items: { type: string } }
+
+  parameters:
+    eventSlug:
+      name: event_slug
+      in: path
+      required: true
+      schema: { type: string }
+    projectId:
+      name: project_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+security:
+  - sessionCookie: []
+
+paths:
+  # ---------------------------------------------------------------- AUTH
+  /auth/signup:
+    post:
+      summary: Create a user account
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+                display_name: { type: string }
+              required: [email, password, display_name]
+      responses:
+        '201': { description: created, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/User' } } } } } }
+        '409': { description: email already registered, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/login:
+    post:
+      summary: Log in, receive session cookie
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { email: { type: string }, password: { type: string } }
+              required: [email, password]
+      responses:
+        '200': { description: sets verdict_session cookie }
+        '401': { description: bad credentials, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/logout:
+    post:
+      summary: Invalidate current session
+      responses: { '204': { description: no content } }
+
+  /auth/me:
+    get:
+      summary: Current user + event memberships
+      responses:
+        '200': { description: ok }
+        '401': { description: unauthenticated, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ---------------------------------------------------------------- EVENTS
+  /events:
+    get:
+      summary: List events (public ones for visitors; all owned/joined for authed users)
+      security: []
+      responses: { '200': { description: ok } }
+    post:
+      summary: Create an event (becomes organizer)
+      responses: { '201': { description: created } }
+
+  /events/{event_slug}:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get:
+      summary: Event detail (public)
+      security: []
+      responses:
+        '200': { description: ok }
+        '404': { description: not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    patch:
+      summary: Update event settings (organizer/admin only)
+      responses:
+        '200': { description: ok }
+        '403': { description: forbidden, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /events/{event_slug}/publish-results:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    post:
+      summary: Publish the latest (or a specified) normalization run. Gated per JUDGING.md §5/§7.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                run_id: { type: string, format: uuid, description: "defaults to latest run" }
+                force: { type: boolean, default: false }
+                reason: { type: string, description: "required if force=true; written to audit log" }
+      responses:
+        '200': { description: published }
+        '409': { description: coverage below min_publish_coverage_pct and force not set, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: forbidden, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ---------------------------------------------------------------- TRACKS / PRIZES
+  /events/{event_slug}/tracks:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get: { summary: List tracks, security: [], responses: { '200': { description: ok } } }
+    post:
+      summary: Create track (organizer/admin)
+      responses: { '201': { description: created }, '403': { description: forbidden } }
+
+  /tracks/{track_id}:
+    parameters: [ { name: track_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    patch: { summary: Update track (organizer/admin), responses: { '200': { description: ok } } }
+    delete: { summary: Delete track (organizer/admin), responses: { '204': { description: no content } } }
+
+  /events/{event_slug}/prizes:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get: { summary: List prizes, security: [], responses: { '200': { description: ok } } }
+    post: { summary: Create prize (organizer/admin), responses: { '201': { description: created } } }
+
+  /prizes/{prize_id}:
+    parameters: [ { name: prize_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    patch: { summary: Update prize, responses: { '200': { description: ok } } }
+    delete: { summary: Delete prize, responses: { '204': { description: no content } } }
+
+  # ---------------------------------------------------------------- TEAMS
+  /events/{event_slug}/teams:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    post:
+      summary: Create a team (participant), caller becomes first member
+      responses: { '201': { description: created }, '403': { description: submissions_closed or not authed } }
+
+  /events/{event_slug}/teams/mine:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get: { summary: Caller's team for this event, responses: { '200': { description: ok }, '404': { description: no team yet } } }
+
+  /events/{event_slug}/teams/join:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    post:
+      summary: Join a team via invite code
+      requestBody: { content: { application/json: { schema: { type: object, properties: { code: { type: string } }, required: [code] } } } }
+      responses: { '200': { description: joined }, '404': { description: invalid code }, '409': { description: expired or exhausted } }
+
+  /teams/{team_id}/invites:
+    parameters: [ { name: team_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    post: { summary: Create an invite code (team member), responses: { '201': { description: created } } }
+
+  /teams/{team_id}:
+    parameters: [ { name: team_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get: { summary: Team detail, responses: { '200': { description: ok } } }
+
+  # ---------------------------------------------------------------- PROJECTS (gallery / submit)
+  /events/{event_slug}/projects:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get:
+      summary: >
+        Public gallery. This is the .dogfood.toml `routes.gallery` target and must return JSON
+        (not require JS execution) containing fixture project titles verbatim in response bodies.
+      security: []
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: search title/summary }
+        - { name: track_id, in: query, schema: { type: string, format: uuid } }
+        - { name: sort, in: query, schema: { type: string, enum: [newest, title] } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Project' } }
+                  meta: { type: object }
+    post:
+      summary: >
+        Create + submit a project for the caller's team. This is the .dogfood.toml `routes.submit`
+        target. Must return 4xx once events.submissions_close_at has passed, regardless of what the
+        frontend UI shows.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                summary: { type: string }
+                description_md: { type: string }
+                repo_url: { type: string }
+                demo_url: { type: string }
+                video_url: { type: string }
+                track_id: { type: string, format: uuid }
+              required: [title, summary]
+      responses:
+        '201': { description: created }
+        '403': { description: caller has no team / not a participant, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: submissions_closed — deadline enforced server-side, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /projects/{project_id}:
+    parameters: [ { $ref: '#/components/parameters/projectId' } ]
+    get: { summary: Project detail (public if submitted), security: [], responses: { '200': { description: ok }, '404': { description: not found } } }
+    patch:
+      summary: Edit a draft/submitted project (team member only, before deadline)
+      responses:
+        '200': { description: ok }
+        '409': { description: deadline passed, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /projects/{project_id}/submit:
+    parameters: [ { $ref: '#/components/parameters/projectId' } ]
+    post:
+      summary: Transition draft → submitted
+      responses:
+        '200': { description: ok }
+        '409': { description: deadline passed, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ---------------------------------------------------------------- RUBRIC
+  /events/{event_slug}/rubric:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get: { summary: Active rubric, responses: { '200': { description: ok } } }
+    put:
+      summary: Replace active rubric configuration (organizer/admin)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                criteria:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key: { type: string }
+                      label: { type: string }
+                      weight: { type: number }
+                      scale_min: { type: integer }
+                      scale_max: { type: integer }
+                      option_labels: { type: object }
+      responses: { '200': { description: ok }, '403': { description: forbidden } }
+
+  # ---------------------------------------------------------------- ASSIGNMENTS
+  /events/{event_slug}/assignments:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get: { summary: All assignments (organizer/admin), responses: { '200': { description: ok }, '403': { description: forbidden } } }
+    post:
+      summary: Bulk-create assignments (organizer/admin)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assignments:
+                  type: array
+                  items:
+                    type: object
+                    properties: { project_id: { type: string, format: uuid }, judge_user_id: { type: string, format: uuid } }
+      responses: { '201': { description: created }, '403': { description: forbidden } }
+
+  /events/{event_slug}/assignments/mine:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get: { summary: Caller's own assignment list (judge), responses: { '200': { description: ok }, '403': { description: forbidden } } }
+
+  # ---------------------------------------------------------------- JUDGE FEED / EVALUATIONS
+  /events/{event_slug}/judge/feed:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get:
+      summary: Next unfinished assignment for the calling judge, with full project + rubric + progress counters, or null if queue empty
+      responses: { '200': { description: ok }, '403': { description: caller is not a judge on this event } }
+
+  /assignments/{assignment_id}/evaluation:
+    parameters: [ { name: assignment_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    post:
+      summary: Create/update a draft evaluation (autosave — safe to call repeatedly, status stays in_progress)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reaction: { type: string, enum: [not_convinced, interesting, stands_out] }
+                final_preference: { type: string, enum: [no, maybe, yes] }
+                tags: { type: array, items: { type: string } }
+                comment: { type: string }
+                scores: { type: array, items: { $ref: '#/components/schemas/EvaluationScoreInput' } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Evaluation' } } } } } }
+        '403': { description: assignment not owned by caller }
+
+  /assignments/{assignment_id}/evaluation/submit:
+    parameters: [ { name: assignment_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+    post:
+      summary: Finalize the evaluation — requires all rubric criteria answered; sets status=submitted, locks further edits by the judge
+      responses:
+        '200': { description: ok }
+        '422': { description: rubric incomplete, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: assignment not owned by caller }
+
+  /events/{event_slug}/evaluations/mine:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get:
+      summary: >
+        Caller's own submitted + in-progress evaluations for this event. This is the
+        .dogfood.toml `routes.judge_scores` target.
+      responses: { '200': { description: ok }, '403': { description: caller has no judge/organizer/admin role } }
+
+  /events/{event_slug}/judges/{judge_user_id}/evaluations:
+    parameters:
+      - { $ref: '#/components/parameters/eventSlug' }
+      - { name: judge_user_id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: >
+        A specific judge's evaluations. This is the .dogfood.toml `routes.peer_scores` target.
+        Allowed only if caller.id == judge_user_id, or caller is organizer/admin of this event —
+        every other caller (including other judges) gets 403. This is the exact check the T2
+        acceptance test targets; implement it once in the judging module's ownership check.
+      responses:
+        '200': { description: ok }
+        '403': { description: forbidden — caller is neither the judge in question nor an organizer/admin, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ---------------------------------------------------------------- PAIRWISE (bonus)
+  /events/{event_slug}/pairwise/next:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get: { summary: Get a pairwise comparison pair for the caller (judge), responses: { '200': { description: ok }, '204': { description: no pair available right now } } }
+
+  /events/{event_slug}/pairwise:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    post:
+      summary: Submit a pairwise comparison result
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_a_id: { type: string, format: uuid }
+                project_b_id: { type: string, format: uuid }
+                winner_project_id: { type: string, format: uuid }
+              required: [project_a_id, project_b_id, winner_project_id]
+      responses: { '201': { description: created }, '403': { description: forbidden } }
+
+  # ---------------------------------------------------------------- ENGINE / RESULTS
+  /events/{event_slug}/normalization/run:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    post:
+      summary: Compute a new normalization run per JUDGING.md (organizer/admin)
+      responses: { '201': { description: created }, '403': { description: forbidden } }
+
+  /events/{event_slug}/results:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get:
+      summary: Ranked results. Public only once events.status = results_published; organizer/admin can always view the latest run.
+      security: []
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/ProjectRanking' } } } } } } }
+        '403': { description: not yet published, and caller is not organizer/admin, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /events/{event_slug}/results/{project_id}/explain:
+    parameters:
+      - { $ref: '#/components/parameters/eventSlug' }
+      - { $ref: '#/components/parameters/projectId' }
+    get:
+      summary: Full provenance chain per JUDGING.md §8, plus the separate informational panel
+      responses: { '200': { description: ok }, '403': { description: not published and caller is not organizer/admin } }
+
+  /events/{event_slug}/dashboard/progress:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get:
+      summary: Judging Control Room data — coverage, per-judge completion, integrity flags (organizer/admin)
+      responses: { '200': { description: ok }, '403': { description: forbidden } }
+
+  # ---------------------------------------------------------------- VOTING
+  /events/{event_slug}/vote/ballot:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get:
+      summary: Randomized-order project list for public voting (only while voting_open_at..voting_close_at and results not yet published)
+      security: []
+      responses: { '200': { description: ok }, '403': { description: voting not currently open } }
+
+  /events/{event_slug}/vote:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    post:
+      summary: Cast a vote. Deduplicated at the DB level on (event_id, project_id, voter_key); rate-limited per IP and per voter_key.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id: { type: string, format: uuid }
+                voter_type: { type: string, enum: [email, link, account] }
+                email: { type: string, description: "required if voter_type=email" }
+              required: [project_id, voter_type]
+      responses:
+        '201': { description: created }
+        '409': { description: duplicate vote, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: rate limited, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ---------------------------------------------------------------- COMMENTS
+  /projects/{project_id}/comments:
+    parameters: [ { $ref: '#/components/parameters/projectId' } ]
+    get: { summary: List visible comments, security: [], responses: { '200': { description: ok } } }
+    post:
+      summary: Post a comment (rate-limited; visitors allowed with a display name, no account required)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { body: { type: string }, author_display_name: { type: string } }
+              required: [body]
+      responses: { '201': { description: created }, '429': { description: rate limited } }
+
+  # ---------------------------------------------------------------- AUDIT
+  /events/{event_slug}/audit:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get:
+      summary: Paginated audit trail (organizer/admin only)
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: action, in: query, schema: { type: string } }
+      responses: { '200': { description: ok }, '403': { description: forbidden } }
+
+  # ---------------------------------------------------------------- EXPORTS
+  /events/{event_slug}/export.csv:
+    parameters: [ { $ref: '#/components/parameters/eventSlug' } ]
+    get:
+      summary: >
+        CSV export of the latest ranked results (organizer/admin). This is the .dogfood.toml
+        `routes.csv_export` target — must return status 200 with Content-Type text/csv and a
+        header row containing at least one comma.
+      responses:
+        '200': { description: ok, content: { text/csv: { schema: { type: string } } } }
+        '403': { description: forbidden, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }

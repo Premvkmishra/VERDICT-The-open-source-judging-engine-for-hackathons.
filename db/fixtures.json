@@ -1,0 +1,151 @@
+{
+  "event": {
+    "slug": "dogfood-demo",
+    "name": "DOGFOOD 2026",
+    "tagline": "72-Hour Internal Buildathon",
+    "description_md": "Welcome to DOGFOOD 2026. Judge projects, not forms.",
+    "status": "submissions_closed",
+    "submissions_open_at": "2026-09-20T00:00:00Z",
+    "submissions_close_at": "2026-09-25T12:00:00Z",
+    "judging_opens_at": "2026-09-25T12:00:00Z",
+    "judging_closes_at": "2026-09-28T12:00:00Z",
+    "min_reviews_per_project": 3,
+    "min_publish_coverage_pct": 0.90
+  },
+  "users": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "email": "organizer@verdict.dev",
+      "display_name": "Organizer Admin",
+      "is_platform_admin": true,
+      "role": "organizer",
+      "token": "token_organizer_sec_token_32chars_long_123"
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "email": "judge_a@verdict.dev",
+      "display_name": "Ada Lovelace (Judge A)",
+      "is_platform_admin": false,
+      "role": "judge",
+      "token": "token_judge_a_sec_token_32chars_long_456"
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "email": "judge_b@verdict.dev",
+      "display_name": "Alan Turing (Judge B)",
+      "is_platform_admin": false,
+      "role": "judge",
+      "token": "token_judge_b_sec_token_32chars_long_789"
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "email": "judge_c@verdict.dev",
+      "display_name": "Grace Hopper (Judge C)",
+      "is_platform_admin": false,
+      "role": "judge",
+      "token": "token_judge_c_sec_token_32chars_long_abc"
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "email": "judge_d@verdict.dev",
+      "display_name": "Zero Variance Judge (Judge D)",
+      "is_platform_admin": false,
+      "role": "judge",
+      "token": "token_judge_d_sec_token_32chars_long_def"
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666666",
+      "email": "participant@verdict.dev",
+      "display_name": "Hackathon Builder (Participant)",
+      "is_platform_admin": false,
+      "role": "participant",
+      "token": "token_participant_sec_token_32chars_long_ghi"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "a1111111-1111-4111-8111-111111111111",
+      "name": "AI & Agentic Systems",
+      "description": "Autonomous agents and intelligent tools",
+      "sort_order": 1
+    },
+    {
+      "id": "a2222222-2222-4222-8222-222222222222",
+      "name": "Developer Tools & Infrastructure",
+      "description": "High velocity dev tools and developer platforms",
+      "sort_order": 2
+    }
+  ],
+  "prizes": [
+    {
+      "id": "b1111111-1111-4111-8111-111111111111",
+      "track_id": "a1111111-1111-4111-8111-111111111111",
+      "name": "Best Agentic Workflow",
+      "description": "$5,000 cash prize"
+    }
+  ],
+  "rubric": {
+    "name": "DOGFOOD Standard Rubric",
+    "criteria": [
+      {
+        "id": "c1111111-1111-4111-8111-111111111111",
+        "key": "idea",
+        "label": "Idea & Innovation",
+        "description": "Originality and problem framing",
+        "weight": 1.0,
+        "scale_min": 1,
+        "scale_max": 4,
+        "sort_order": 1
+      },
+      {
+        "id": "c2222222-2222-4222-8222-222222222222",
+        "key": "execution",
+        "label": "Technical Execution",
+        "description": "Quality of software architecture and craftsmanship",
+        "weight": 2.0,
+        "scale_min": 1,
+        "scale_max": 4,
+        "sort_order": 2
+      },
+      {
+        "id": "c3333333-3333-4333-8333-333333333333",
+        "key": "impact",
+        "label": "Impact & Practicality",
+        "description": "Usefulness and potential reach",
+        "weight": 1.0,
+        "scale_min": 1,
+        "scale_max": 4,
+        "sort_order": 3
+      }
+    ]
+  },
+  "projects": [
+    {
+      "id": "p1111111-1111-4111-8111-111111111111",
+      "title": "Verdict Platform",
+      "summary": "Self-hostable hackathon submission and judging platform",
+      "description_md": "Built for fast evaluation and transparent judging.",
+      "repo_url": "https://github.com/verdict/verdict",
+      "track_id": "a1111111-1111-4111-8111-111111111111",
+      "status": "submitted"
+    },
+    {
+      "id": "p2222222-2222-4222-8222-222222222222",
+      "title": "Dogfood AI Reviewer",
+      "summary": "Autonomous code review assistant",
+      "description_md": "Reviews pull requests using LLMs.",
+      "repo_url": "https://github.com/dogfood/ai",
+      "track_id": "a1111111-1111-4111-8111-111111111111",
+      "status": "submitted"
+    },
+    {
+      "id": "p3333333-3333-4333-8333-333333333333",
+      "title": "FastDB Engine",
+      "summary": "High performance in-memory caching system",
+      "description_md": "Ultra-low latency key-value storage engine.",
+      "repo_url": "https://github.com/fastdb/fastdb",
+      "track_id": "a2222222-2222-4222-8222-222222222222",
+      "status": "submitted"
+    }
+  ]
+}
