@@ -30,3 +30,7 @@ Thumbs.db
 
 # Postgres data
 postgres_data/
+
+# Prompts
+ANTIGRAVITY-PROMPT.md
+
